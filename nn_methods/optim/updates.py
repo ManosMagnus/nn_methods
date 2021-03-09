@@ -7,7 +7,7 @@ class M_ABS(object):
         p.addcmul_(p.abs(), grad.mul(lr_in).tanh(), value=-lr_out)
 
     def __repr__(self):
-        return "ABS"
+        return "M_ABS"
 
 
 class M_SPOW(object):
@@ -16,10 +16,10 @@ class M_SPOW(object):
         p.mul_(T.pow(2, grad.mul(lr_in).tanh().mul(lr_out).mul(-p.sign())))
 
     def __repr__(self):
-        return "SPOW"
+        return "M_SPOW"
 
 
-class NormalClip(object):
+class N_Clip(object):
     @T.no_grad()
     def __call__(self, p, grad, lr):
         if p.grad is not None:
@@ -29,7 +29,7 @@ class NormalClip(object):
         return "N_CLIP"
 
 
-class NormalABS(object):
+class N_ABS(object):
     @T.no_grad()
     def __call__(self, p, grad, lr):
         if p.grad is not None:

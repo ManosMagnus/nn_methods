@@ -21,7 +21,7 @@ class NNLinear(T.nn.Module):
         self.l_pos.weight = T.nn.Parameter(w_pos.cuda())
         self.l_neg.weight = T.nn.Parameter(w_neg.cuda())
 
-        self.bias = T.nn.Parameter(bias.cuda(), True)
+        self.bias = T.nn.Parameter(bias.cuda())
 
         # self.weight = T.nn.Parameter(self.l_pos.weight + self.l_neg.weight,
         #                              True)
@@ -37,4 +37,4 @@ class NNLinear(T.nn.Module):
         return x
 
     def get_weight(self):
-        return self.l_pos.weight + (self.l_neg.weight)
+        return self.l_pos.weight + self.l_neg.weight
