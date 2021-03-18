@@ -56,6 +56,7 @@ class NNSGDMomentum(Optimizer):
                  u_func,
                  lr_in=required,
                  lr_out=required,
+                 momentum_type=None,
                  momentum=0,
                  dampening=0,
                  weight_decay=0,
@@ -65,6 +66,8 @@ class NNSGDMomentum(Optimizer):
         if lr_out is not required and lr_out < 0.0:
             raise ValueError(
                 "Invalid learning rate outside: {}".format(lr_out))
+        if momentum_type is not None and momentum_type != 'tanh':
+            raise ValueError("Invalid momentum type: {}".format(momentum_type))
 
         if momentum < 0.0:
             raise ValueError("Invalid momentum value: {}".format(momentum))
@@ -75,6 +78,7 @@ class NNSGDMomentum(Optimizer):
         defaults = dict(u_func=u_func,
                         lr_in=lr_in,
                         lr_out=lr_out,
+                        momentum_type=momentum_type,
                         momentum=momentum,
                         dampening=dampening,
                         weight_decay=weight_decay,
@@ -115,23 +119,12 @@ class NNSGDMomentum(Optimizer):
                 d_p = p.grad
                 if weight_decay != 0:
                     d_p = d_p.add(p, alpha=weight_decay)
-                if momentum != 0:
-                    param_state = self.state[p]
-                    if 'momentum_buffer' not in param_state:
-                        buf = param_state['momentum_buffer'] = T.clone(
-                            d_p).detach()
-                    else:
-                        buf = param_state['momentum_buffer']
-                        buf.mul_(momentum).add_(group['u_func'].tanh_part(
-                            d_p, group['lr_in']),
-                                                alpha=1 - dampening)
-                    if nesterov:  # TODO: Apply momentum also in nesterov
-                        d_p = d_p.add(buf, alpha=momentum)
-                    else:
-                        d_p = buf
-
-                    group['u_func'].update(p, d_p, lr_out=group['lr_out'])
-
+                if momentum != 0 and group['momentum_type'] == 'tanh':
+                    self.update_tanh_momentum(p, d_p, group, momentum,
+                                              dampening, nesterov)
+                elif momentum != 0:
+                    self.update_normal_momentum(p, d_p, group, momentum,
+                                                dampening, nesterov)
                 else:
                     group['u_func'](p,
                                     d_p,
@@ -140,3 +133,34 @@ class NNSGDMomentum(Optimizer):
                     # -> p.add_(d_p, alpha=-group['lr'])
 
         return loss
+
+    def update_normal_momentum(self, p, d_p, group, momentum, dampening,
+                               nesterov):
+        param_state = self.state[p]
+        if 'momentum_buffer' not in param_state:
+            buf = param_state['momentum_buffer'] = T.clone(d_p).detach()
+        else:
+            buf = param_state['momentum_buffer']
+            buf.mul_(momentum).add_(d_p, alpha=1 - dampening)
+            if nesterov:
+                d_p = d_p.add(buf, alpha=momentum)
+            else:
+                d_p = buf
+
+        group['u_func'](p, d_p, lr_in=group['lr_in'], lr_out=group['lr_out'])
+
+    def update_tanh_momentum(self, p, d_p, group, momentum, dampening,
+                             nesterov):
+        param_state = self.state[p]
+        if 'momentum_buffer' not in param_state:
+            buf = param_state['momentum_buffer'] = T.clone(d_p).detach()
+        else:
+            buf = param_state['momentum_buffer']
+            buf.mul_(momentum).add_(group['u_func'].tanh_part(
+                d_p, group['lr_in']),
+                                    alpha=1 - dampening)
+            if nesterov:  # TODO: Apply momentum also in nesterov
+                d_p = d_p.add(buf, alpha=momentum)
+            else:
+                d_p = buf
+            group['u_func'].update(p, d_p, lr_out=group['lr_out'])
