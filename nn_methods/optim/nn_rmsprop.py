@@ -33,14 +33,20 @@ class NNRMSprop(Optimizer):
     def __init__(self,
                  params,
                  u_func,
-                 lr=1e-2,
+                 lr_in=1.0,
+                 lr_out=1e-2,
+                 g=1.0,
                  alpha=0.99,
                  eps=1e-8,
                  weight_decay=0,
                  momentum=0,
                  centered=False):
-        if not 0.0 <= lr:
-            raise ValueError("Invalid learning rate: {}".format(lr))
+        if not 0.0 <= lr_in:
+            raise ValueError("Invalid inner learning rate: {}".format(lr_in))
+        if not 0.0 <= lr_out:
+            raise ValueError("Invalid outer learning rate: {}".format(lr_out))
+        if g < 0.0 or g > 0.0:
+            raise ValueError("Invalid g value: {}".format(g))
         if not 0.0 <= eps:
             raise ValueError("Invalid epsilon value: {}".format(eps))
         if not 0.0 <= momentum:
@@ -52,7 +58,9 @@ class NNRMSprop(Optimizer):
             raise ValueError("Invalid alpha value: {}".format(alpha))
 
         defaults = dict(u_func=u_func,
-                        lr=lr,
+                        lr_in=lr_in,
+                        lr_out=lr_out,
+                        g=g,
                         momentum=momentum,
                         alpha=alpha,
                         eps=eps,
@@ -123,11 +131,19 @@ class NNRMSprop(Optimizer):
                 if group['momentum'] > 0:
                     buf = state['momentum_buffer']
                     buf.mul_(group['momentum']).addcdiv_(grad, avg)
-                    group['u_func'](p, buf, group['lr'])
+                    group['u_func'](p,
+                                    buf,
+                                    lr_in=group['lr_in'],
+                                    lr_out=group['lr_out'],
+                                    g=group['group'])
                     # -> p.add_(buf, alpha=-group['lr'])
 
                 else:
-                    group['u_func'](p, T.div(grad, avg), group['lr'])
+                    group['u_func'](p,
+                                    T.div(grad, avg),
+                                    lr_in=group['lr_in'],
+                                    lr_out=group['lr_out'],
+                                    g=group['group'])
                     # -> p.addcdiv_(grad, avg, value=-group['lr'])
 
         return loss

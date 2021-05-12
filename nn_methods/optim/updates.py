@@ -1,6 +1,28 @@
 import torch as T
 
 
+class H_ABS(object):
+    @T.no_grad()
+    def __call__(self, p, grad, lr_in=1.0, lr_out=1.0, g=1.0):
+        p.add_(
+            -lr_out.mul(self.m_abs(p, grad, lr_in).mul(g) + grad.mul(1 - g)))
+
+    @T.no_grad()
+    def m_abs(self, p, grad, lr_in):
+        return p.abs().mul(grad.mul(lr_in).tanh())
+
+    @T.no_grad()
+    def tanh_part(self, grad, lr_in=1):
+        return grad.mul(lr_in).tanh()
+
+    @T.no_grad()
+    def update(self, p, grad, lr_out=1, g=1.0):
+        p.add_(-lr_out.mult(p.abs().mul(grad).mul(g) + grad.mul(1 - g)))
+
+    def __repr__(self):
+        return "H_ABS"
+
+
 class M_ABS(object):
     @T.no_grad()
     def __call__(self, p, grad, lr_in=1, lr_out=1):

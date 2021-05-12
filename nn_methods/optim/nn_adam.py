@@ -30,13 +30,19 @@ class NNAdam(Optimizer):
     def __init__(self,
                  params,
                  u_func,
-                 lr=1e-3,
+                 lr_in=1.0,
+                 lr_out=1e-3,
+                 g=1.0,
                  betas=(0.9, 0.999),
                  eps=1e-8,
                  weight_decay=0,
                  amsgrad=False):
-        if not 0.0 <= lr:
-            raise ValueError("Invalid learning rate: {}".format(lr))
+        if not 0.0 <= lr_in:
+            raise ValueError("Invalid inner learning rate: {}".format(lr_in))
+        if not 0.0 <= lr_out:
+            raise ValueError("Invalid outer learning rate: {}".format(lr_out))
+        if g < 0.0 or g > 0.0:
+            raise ValueError("Invalid g value: {}".format(g))
         if not 0.0 <= eps:
             raise ValueError("Invalid epsilon value: {}".format(eps))
         if not 0.0 <= betas[0] < 1.0:
@@ -49,7 +55,9 @@ class NNAdam(Optimizer):
             raise ValueError(
                 "Invalid weight_decay value: {}".format(weight_decay))
         defaults = dict(u_func=u_func,
-                        lr=lr,
+                        lr_in=lr_in,
+                        lr_out=lr_out,
+                        g=g,
                         betas=betas,
                         eps=eps,
                         weight_decay=weight_decay,
@@ -126,9 +134,13 @@ class NNAdam(Optimizer):
                     denom = (exp_avg_sq.sqrt() /
                              math.sqrt(bias_correction2)).add_(group['eps'])
 
-                step_size = group['lr'] / bias_correction1
+                step_size = group['lr_out'] / bias_correction1
 
-                group['u_func'](p, T.div(exp_avg, denom), step_size)
+                group['u_func'](p,
+                                T.div(exp_avg, denom),
+                                lr_in=group['lr_in'],
+                                lr_out=step_size,
+                                g=group['g'])
                 # p.addcdiv_(exp_avg, denom, value=-step_size)
 
         return loss
