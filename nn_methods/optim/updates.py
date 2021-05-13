@@ -4,8 +4,8 @@ import torch as T
 class H_ABS(object):
     @T.no_grad()
     def __call__(self, p, grad, lr_in=1.0, lr_out=1.0, g=1.0):
-        p.add_(
-            -lr_out.mul(self.m_abs(p, grad, lr_in).mul(g) + grad.mul(1 - g)))
+        p.add_((self.m_abs(p, grad, lr_in).mul(g) +
+                grad.mul(1.0 - g)).mul(-lr_out))
 
     @T.no_grad()
     def m_abs(self, p, grad, lr_in):
@@ -25,7 +25,7 @@ class H_ABS(object):
 
 class M_ABS(object):
     @T.no_grad()
-    def __call__(self, p, grad, lr_in=1, lr_out=1):
+    def __call__(self, p, grad, lr_in=1, lr_out=1, g=None):
         p.addcmul_(p.abs(), grad.mul(lr_in).tanh(), value=-lr_out)
 
     @T.no_grad()

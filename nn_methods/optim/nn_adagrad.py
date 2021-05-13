@@ -1,13 +1,13 @@
 import math
+from typing import List
 
 import torch
 from torch import Tensor
-from torch.optim.functional import _make_sparse
-from torch.optim.functional.typing import List
+from torch.optim._functional import _make_sparse
 from torch.optim.optimizer import Optimizer
 
 
-class Adagrad(Optimizer):
+class MAdagrad(Optimizer):
     """Implements Adagrad algorithm.
 
     It has been proposed in `Adaptive Subgradient Methods for Online Learning
@@ -27,13 +27,20 @@ class Adagrad(Optimizer):
     """
     def __init__(self,
                  params,
-                 lr=1e-2,
+                 u_func,
+                 lr_in=1.0,
+                 lr_out=1e-2,
+                 g=1.0,
                  lr_decay=0,
                  weight_decay=0,
                  initial_accumulator_value=0,
                  eps=1e-10):
-        if not 0.0 <= lr:
-            raise ValueError("Invalid learning rate: {}".format(lr))
+        if not 0.0 <= lr_in:
+            raise ValueError("Invalid inner learning rate: {}".format(lr_in))
+        if not 0.0 <= lr_out:
+            raise ValueError("Invalid outter learning rate: {}".format(lr_out))
+        if g < 0.0 or g > 1.0:
+            raise ValueError("Invalid g value: {}".format(g))
         if not 0.0 <= lr_decay:
             raise ValueError("Invalid lr_decay value: {}".format(lr_decay))
         if not 0.0 <= weight_decay:
@@ -46,12 +53,15 @@ class Adagrad(Optimizer):
         if not 0.0 <= eps:
             raise ValueError("Invalid epsilon value: {}".format(eps))
 
-        defaults = dict(lr=lr,
+        defaults = dict(u_func=u_func,
+                        lr_in=lr_in,
+                        lr_out=lr_out,
+                        g=g,
                         lr_decay=lr_decay,
                         eps=eps,
                         weight_decay=weight_decay,
                         initial_accumulator_value=initial_accumulator_value)
-        super(Adagrad, self).__init__(params, defaults)
+        super().__init__(params, defaults)
 
         for group in self.param_groups:
             for p in group['params']:
@@ -99,18 +109,19 @@ class Adagrad(Optimizer):
                     state_steps.append(state['step'])
 
             adagrad(params_with_grad, grads, state_sums, state_steps,
-                    group['lr'], group['weight_decay'], group['lr_decay'],
+                    group['u_func'], group['lr_in'], group['lr_out'],
+                    group['g'], group['weight_decay'], group['lr_decay'],
                     group['eps'])
 
         return loss
 
 
 def adagrad(
-    u_func,
     params: List[Tensor],
     grads: List[Tensor],
     state_sums: List[Tensor],
     state_steps: List[int],
+    u_func,
     lr_in: float,
     lr_out: float,
     g: float,

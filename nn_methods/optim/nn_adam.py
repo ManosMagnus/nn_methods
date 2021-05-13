@@ -41,7 +41,7 @@ class NNAdam(Optimizer):
             raise ValueError("Invalid inner learning rate: {}".format(lr_in))
         if not 0.0 <= lr_out:
             raise ValueError("Invalid outer learning rate: {}".format(lr_out))
-        if g < 0.0 or g > 0.0:
+        if g < 0.0 or g > 1.0:
             raise ValueError("Invalid g value: {}".format(g))
         if not 0.0 <= eps:
             raise ValueError("Invalid epsilon value: {}".format(eps))
