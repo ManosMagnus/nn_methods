@@ -172,6 +172,7 @@ class HMSGD(Optimizer):
                         d_p,
                         lr_in=group['lr_in'],
                         lr_out=group['lr_out'],
+                        lr=group['lr'],
                         g=g)
 
     def update_tanh_momentum(self, p, d_p, group, momentum, dampening,
