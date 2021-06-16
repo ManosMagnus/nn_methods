@@ -5,12 +5,14 @@ from torch.optim.lr_scheduler import _LRScheduler
 
 
 class GExponentialScheduler():
-    def __init__(self, optimizer, patient_epoch=-1, verbose=False):
+    def __init__(self, optimizer, patient_epoch=-1, inverse=False):
         self.optimizer = optimizer
 
         self.last_epoch = 0
         self.epoch_reduction = 0
         self.patient_epoch = patient_epoch
+        self.inversed = inverse
+        self.init_g = []
 
     def state_dict(self):
         state_dict = {
@@ -26,13 +28,23 @@ class GExponentialScheduler():
         pass
 
     def step(self):
+        if self.last_epoch == 0:
+            for param_group in self.optimizer.param_groups:
+                self.init_g.append(param_group['g'])
+
         self.last_epoch += 1
 
         # print("===== Step {} =====".format(self.last_epoch))
         if self.last_epoch > self.patient_epoch:
+            self.epoch_reduction += 1
             for i, param_group in enumerate(self.optimizer.param_groups):
-                self.epoch_reduction += 1
-                param_group['g'] = math.pow(param_group['g'],
-                                            self.epoch_reduction)
+                if not self.inversed:
+                    param_group['g'] = math.pow(self.init_g[i],
+                                                self.epoch_reduction)
+                else:
+                    param_group['g'] = 1 - math.pow(1 - self.init_g[i],
+                                                    self.epoch_reduction)
 
                 # print('New G:', param_group['g'])
+        else:
+            param_group['g'] = 1.0
