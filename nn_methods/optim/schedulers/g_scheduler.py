@@ -34,7 +34,6 @@ class GExponentialScheduler():
 
         self.last_epoch += 1
 
-        # print("===== Step {} =====".format(self.last_epoch))
         if self.last_epoch > self.patient_epoch:
             self.epoch_reduction += 1
             for i, param_group in enumerate(self.optimizer.param_groups):
@@ -45,6 +44,6 @@ class GExponentialScheduler():
                     param_group['g'] = 1 - math.pow(1 - self.init_g[i],
                                                     self.epoch_reduction)
 
-                # print('New G:', param_group['g'])
         else:
-            param_group['g'] = 1.0
+            for param_group in self.optimizer.param_groups:
+                param_group['g'] = 1.0
